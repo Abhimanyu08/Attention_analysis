@@ -50,11 +50,17 @@ def main():
         out = model(**tok_out, output_attentions = True)
         attns = torch.stack(out.attentions, dim = 0).transpose(0,1) #attns are of shape (batch_size, num_layers, num_heads, seq_len, seq_len)
         
+
         num_elem = tok_out['input_ids'].size(0)
         for j in range(num_elem):
-            ids = tok_out['input_ids'][j]
+            ids= tok_out['input_ids'][j]
+            try:
+                seq_len = next(i for i in range(len(ids)) if ids[i] == tokenizer.pad_token_id)
+            except:
+                seq_len = args.max_segment_length
+            ids = ids[:seq_len]
             tokens = tokenizer.convert_ids_to_tokens(ids)
-            attn = attns[j, :, :, :, :]
+            attn = attns[j, :, :, :seq_len, :seq_len].detach()
             feature_dicts.append({'ids':ids, 'tokens':tokens, 'attention_map': attn})
 
     with open(args.pickle_name, 'wb') as file:
