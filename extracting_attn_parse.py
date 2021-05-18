@@ -31,7 +31,7 @@ def token_to_word_attention(amap, token_lists, indexes):
             for index in indexes[i][1:]:
                 amap[:,:,:,indexes[i][0]] += amap[:,:,:,index]
     
-                amap[:,:,indexes[i][0],:] += amap[:,:,:,index]
+                amap[:,:,indexes[i][0],:] += amap[:,:,index,:]
         
                 to_delete_indexes.append(index)
             
@@ -41,7 +41,7 @@ def token_to_word_attention(amap, token_lists, indexes):
     
     amap /= amap.sum(-1, keepdims = True)
     
-    return amap
+    return torch.from_numpy(amap)
 
 class Dataset():
     def __init__(self, list_of_dicts):
@@ -55,7 +55,7 @@ class Dataset():
 def collate_fn(samples, tokenizer):
     batch = []
     for sample in samples:
-        words = " ".join(word for word in sample['word'])
+        words = " ".join(word for word in sample["word"])
         batch.append(words)
         
     tok_out = tokenizer(batch, padding = True, truncation = True, return_tensors = 'pt')
@@ -64,7 +64,7 @@ def collate_fn(samples, tokenizer):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--json_file', type= str, help = "json file containing parsing data")
-    parser.add_argument('--batch_size', type = int)
+    parser.add_argument('--batch_size', type = int, default = 4)
     parser.add_argument('--pickle_file', type= str, help= "pickle file in which to save the attention maps")
 
     args = parser.parse_args()
@@ -99,11 +99,10 @@ def main():
 
             words = [tokenizer.cls_token] + examples[1][j]['word'] + [tokenizer.sep_token]
             token_lists, indexes = words_to_tokens(words, tokenizer)
-
             attn = token_to_word_attention(attns[j, :,:,:seq_len,:seq_len], token_lists, indexes)
 
 
-            dic = {"attention_map": attn, 'words': words, 'heads': examples[1][j]['head'], 'labels': examples[1][j]['label']}
+            dic = {"attention_map": attn, 'words': words[1:-1], 'heads': examples[1][j]['head'], 'labels': examples[1][j]['label']} 
 
             feature_dicts.append(dic)
 
